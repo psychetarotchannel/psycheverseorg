@@ -1,2 +1,0 @@
-# psycheverseorg
-psycheverse.org website
