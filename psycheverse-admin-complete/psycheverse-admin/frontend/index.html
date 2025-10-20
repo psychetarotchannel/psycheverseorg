@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psycheverse Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        .cosmic-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .cosmic-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .sidebar-active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="cosmic-bg min-h-screen text-white" x-data="adminApp()" x-init="init()">
+    
+    <!-- Login Modal -->
+    <div x-show="!isAuthenticated" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="glass-effect rounded-2xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold mb-2">🔮 Psycheverse Admin</h1>
+                <p class="text-gray-300">Enter your credentials to access the dashboard</p>
+            </div>
+            
+            <form @submit.prevent="login()" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Username or Email</label>
+                    <input 
+                        type="text" 
+                        x-model="loginForm.username"
+                        class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                        placeholder="admin"
+                        required
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input 
+                        type="password" 
+                        x-model="loginForm.password"
+                        class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                        placeholder="••••••••"
+                        required
+                    >
+                </div>
+                
+                <button 
+                    type="submit" 
+                    :disabled="loading"
+                    class="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50"
+                >
+                    <span x-show="!loading">Sign In</span>
+                    <span x-show="loading">Signing In...</span>
+                </button>
+            </form>
+            
+            <div x-show="error" class="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-sm" x-text="error"></div>
+            
+            <div class="mt-6 text-center text-sm text-gray-400">
+                Default: admin / admin123
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div x-show="isAuthenticated" x-cloak class="flex h-screen">
+        
+        <!-- Sidebar -->
+        <div class="w-64 glass-effect border-r border-white/20 p-6">
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold">🔮 Psycheverse</h1>
+                <p class="text-sm text-gray-300">Admin Dashboard</p>
+            </div>
+            
+            <nav class="space-y-2">
+                <button 
+                    @click="currentView = 'dashboard'" 
+                    :class="currentView === 'dashboard' ? 'sidebar-active' : ''"
+                    class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                    <i class="fas fa-chart-line mr-3"></i>Dashboard
+                </button>
+                
+                <button 
+                    @click="currentView = 'creators'" 
+                    :class="currentView === 'creators' ? 'sidebar-active' : ''"
+                    class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                    <i class="fas fa-users mr-3"></i>Creators
+                </button>
+                
+                <button 
+                    @click="currentView = 'featured'" 
+                    :class="currentView === 'featured' ? 'sidebar-active' : ''"
+                    class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                    <i class="fas fa-crown mr-3"></i>Featured
+                </button>
+                
+                <button 
+                    @click="currentView = 'subscriptions'" 
+                    :class="currentView === 'subscriptions' ? 'sidebar-active' : ''"
+                    class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                    <i class="fas fa-credit-card mr-3"></i>Subscriptions
+                </button>
+                
+                <button 
+                    @click="currentView = 'analytics'" 
+                    :class="currentView === 'analytics' ? 'sidebar-active' : ''"
+                    class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                    <i class="fas fa-chart-bar mr-3"></i>Analytics
+                </button>
+                
+                <button 
+                    @click="currentView = 'settings'" 
+                    :class="currentView === 'settings' ? 'sidebar-active' : ''"
+                    class="w-full text-left px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                    <i class="fas fa-cog mr-3"></i>Settings
+                </button>
+            </nav>
+            
+            <div class="mt-auto pt-8">
+                <div class="text-sm text-gray-400 mb-4">
+                    Logged in as: <span x-text="user?.username"></span>
+                </div>
+                <button 
+                    @click="logout()" 
+                    class="w-full px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors"
+                >
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto">
+            
+            <!-- Dashboard View -->
+            <div x-show="currentView === 'dashboard'" class="p-8">
+                <h2 class="text-3xl font-bold mb-8">Dashboard Overview</h2>
+                
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="glass-effect rounded-xl p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-300 text-sm">Total Creators</p>
+                                <p class="text-3xl font-bold" x-text="stats.creators?.total_creators || 0"></p>
+                            </div>
+                            <i class="fas fa-users text-2xl text-blue-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-effect rounded-xl p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-300 text-sm">Live Now</p>
+                                <p class="text-3xl font-bold text-green-400" x-text="stats.creators?.live_creators || 0"></p>
+                            </div>
+                            <i class="fas fa-broadcast-tower text-2xl text-green-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-effect rounded-xl p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-300 text-sm">Featured</p>
+                                <p class="text-3xl font-bold text-yellow-400" x-text="stats.creators?.featured_creators || 0"></p>
+                            </div>
+                            <i class="fas fa-crown text-2xl text-yellow-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-effect rounded-xl p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-300 text-sm">Monthly Revenue</p>
+                                <p class="text-3xl font-bold text-green-400">$<span x-text="((stats.subscriptions?.monthly_revenue || 0) / 100).toFixed(0)"></span></p>
+                            </div>
+                            <i class="fas fa-dollar-sign text-2xl text-green-400"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <button 
+                        @click="currentView = 'creators'; showCreateCreator = true"
+                        class="glass-effect rounded-xl p-6 hover:bg-white/20 transition-colors text-left"
+                    >
+                        <i class="fas fa-plus text-2xl text-purple-400 mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-2">Add Creator</h3>
+                        <p class="text-gray-300 text-sm">Add a new creator to the directory</p>
+                    </button>
+                    
+                    <button 
+                        @click="refreshLiveStatus()"
+                        class="glass-effect rounded-xl p-6 hover:bg-white/20 transition-colors text-left"
+                    >
+                        <i class="fas fa-sync text-2xl text-blue-400 mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-2">Refresh Live Status</h3>
+                        <p class="text-gray-300 text-sm">Update all creator live statuses</p>
+                    </button>
+                    
+                    <button 
+                        @click="exportData()"
+                        class="glass-effect rounded-xl p-6 hover:bg-white/20 transition-colors text-left"
+                    >
+                        <i class="fas fa-download text-2xl text-green-400 mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-2">Export Data</h3>
+                        <p class="text-gray-300 text-sm">Download creator data for website</p>
+                    </button>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="glass-effect rounded-xl p-6">
+                    <h3 class="text-xl font-bold mb-4">Recent Activity</h3>
+                    <div class="space-y-3">
+                        <template x-for="activity in stats.recent_activity || []" :key="activity.event_type">
+                            <div class="flex items-center justify-between py-2 border-b border-white/10">
+                                <span x-text="activity.event_type.replace('_', ' ').toUpperCase()"></span>
+                                <span class="text-gray-400" x-text="activity.count + ' events'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Creators View -->
+            <div x-show="currentView === 'creators'" class="p-8">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-bold">Creator Management</h2>
+                    <button 
+                        @click="showCreateCreator = true" 
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                    >
+                        <i class="fas fa-plus mr-2"></i>Add Creator
+                    </button>
+                </div>
+                
+                <!-- Search and Filters -->
+                <div class="glass-effect rounded-xl p-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input 
+                            type="text" 
+                            x-model="creatorSearch"
+                            @input="searchCreators()"
+                            placeholder="Search creators..."
+                            class="px-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                        >
+                        
+                        <select 
+                            x-model="creatorStatusFilter"
+                            @change="searchCreators()"
+                            class="px-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                        >
+                            <option value="">All Status</option>
+                            <option value="live">Live</option>
+                            <option value="recent">Recent</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                        
+                        <select 
+                            x-model="creatorFeaturedFilter"
+                            @change="searchCreators()"
+                            class="px-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                        >
+                            <option value="">All Creators</option>
+                            <option value="true">Featured Only</option>
+                            <option value="false">Non-Featured</option>
+                        </select>
+                        
+                        <button 
+                            @click="refreshCreators()" 
+                            class="px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-lg hover:bg-blue-500/30 transition-colors"
+                        >
+                            <i class="fas fa-refresh mr-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Creators Table -->
+                <div class="glass-effect rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-white/5">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Creator</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Viewers</th>
+                                    <th class="px-6 py-4 text-left">Featured</th>
+                                    <th class="px-6 py-4 text-left">Paid</th>
+                                    <th class="px-6 py-4 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="creator in creators" :key="creator.id">
+                                    <tr class="border-b border-white/10 hover:bg-white/5">
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <img 
+                                                    :src="creator.avatar_url || 'https://via.placeholder.com/40'" 
+                                                    :alt="creator.display_name"
+                                                    class="w-10 h-10 rounded-full mr-3"
+                                                >
+                                                <div>
+                                                    <div class="font-semibold" x-text="creator.display_name"></div>
+                                                    <div class="text-sm text-gray-400" x-text="creator.description"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span 
+                                                :class="{
+                                                    'bg-green-500/20 text-green-400': creator.status === 'live',
+                                                    'bg-yellow-500/20 text-yellow-400': creator.status === 'recent',
+                                                    'bg-gray-500/20 text-gray-400': creator.status === 'offline'
+                                                }"
+                                                class="px-2 py-1 rounded-full text-xs font-semibold uppercase"
+                                                x-text="creator.status"
+                                            ></span>
+                                        </td>
+                                        <td class="px-6 py-4" x-text="creator.viewers || 0"></td>
+                                        <td class="px-6 py-4">
+                                            <button 
+                                                @click="toggleFeatured(creator)"
+                                                :class="creator.is_featured ? 'text-yellow-400' : 'text-gray-400'"
+                                                class="hover:text-yellow-300 transition-colors"
+                                            >
+                                                <i class="fas fa-crown"></i>
+                                            </button>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span 
+                                                :class="creator.is_paid_member ? 'text-green-400' : 'text-gray-400'"
+                                                x-text="creator.is_paid_member ? 'Yes' : 'No'"
+                                            ></span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex space-x-2">
+                                                <button 
+                                                    @click="editCreator(creator)"
+                                                    class="text-blue-400 hover:text-blue-300 transition-colors"
+                                                >
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button 
+                                                    @click="deleteCreator(creator)"
+                                                    class="text-red-400 hover:text-red-300 transition-colors"
+                                                >
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Featured Management View -->
+            <div x-show="currentView === 'featured'" class="p-8">
+                <h2 class="text-3xl font-bold mb-8">Featured Creator Management</h2>
+                
+                <div class="glass-effect rounded-xl p-6 mb-6">
+                    <h3 class="text-xl font-bold mb-4">Featured Slots (4 Maximum)</h3>
+                    <p class="text-gray-300 mb-4">Manage featured creators with priority ordering. Higher priority appears first on the website.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <template x-for="(creator, index) in featuredCreators" :key="creator.id">
+                            <div class="glass-effect rounded-lg p-4 border border-white/20">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <span class="text-2xl mr-3" x-text="index + 1"></span>
+                                        <div>
+                                            <div class="font-semibold" x-text="creator.display_name"></div>
+                                            <div class="text-sm text-gray-400">Priority: <span x-text="creator.featured_priority"></span></div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        @click="removeFeatured(creator)"
+                                        class="text-red-400 hover:text-red-300 transition-colors"
+                                    >
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings View -->
+            <div x-show="currentView === 'settings'" class="p-8">
+                <h2 class="text-3xl font-bold mb-8">Site Settings</h2>
+                
+                <div class="glass-effect rounded-xl p-6">
+                    <form @submit.prevent="saveSettings()" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Site Title</label>
+                                <input 
+                                    type="text" 
+                                    x-model="settings.site_title"
+                                    class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Featured Slots</label>
+                                <input 
+                                    type="number" 
+                                    x-model="settings.featured_slots"
+                                    min="1" max="10"
+                                    class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Subscription Price (cents)</label>
+                                <input 
+                                    type="number" 
+                                    x-model="settings.subscription_price"
+                                    class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Max Free Listings</label>
+                                <input 
+                                    type="number" 
+                                    x-model="settings.max_free_listings"
+                                    class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                                >
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center">
+                            <input 
+                                type="checkbox" 
+                                x-model="settings.auto_approve_free"
+                                id="auto_approve"
+                                class="mr-3"
+                            >
+                            <label for="auto_approve" class="text-sm">Auto-approve free listings</label>
+                        </div>
+                        
+                        <button 
+                            type="submit" 
+                            class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                        >
+                            Save Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Creator Modal -->
+    <div x-show="showCreateCreator" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div class="glass-effect rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Add New Creator</h3>
+                <button @click="showCreateCreator = false" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form @submit.prevent="createCreator()" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Display Name</label>
+                        <input 
+                            type="text" 
+                            x-model="newCreator.display_name"
+                            class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Avatar Upload</label>
+                        <input 
+                            type="file" 
+                            @change="handleAvatarUpload"
+                            accept="image/*"
+                            class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                        >
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <textarea 
+                        x-model="newCreator.description"
+                        rows="3"
+                        class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 focus:border-white/40 focus:outline-none"
+                    ></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            x-model="newCreator.is_featured"
+                            id="new_featured"
+                            class="mr-3"
+                        >
+                        <label for="new_featured" class="text-sm">Featured Creator</label>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            x-model="newCreator.is_paid_member"
+                            id="new_paid"
+                            class="mr-3"
+                        >
+                        <label for="new_paid" class="text-sm">Paid Member</label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-4">
+                    <button 
+                        type="button"
+                        @click="showCreateCreator = false"
+                        class="px-6 py-3 bg-gray-500/20 border border-gray-500/30 rounded-lg hover:bg-gray-500/30 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit"
+                        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                    >
+                        Create Creator
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function adminApp() {
+            return {
+                // Authentication
+                isAuthenticated: false,
+                user: null,
+                token: localStorage.getItem('admin_token'),
+                
+                // UI State
+                currentView: 'dashboard',
+                loading: false,
+                error: '',
+                
+                // Forms
+                loginForm: {
+                    username: '',
+                    password: ''
+                },
+                
+                newCreator: {
+                    display_name: '',
+                    description: '',
+                    is_featured: false,
+                    is_paid_member: false
+                },
+                
+                // Data
+                stats: {},
+                creators: [],
+                featuredCreators: [],
+                subscriptions: [],
+                settings: {},
+                
+                // Filters
+                creatorSearch: '',
+                creatorStatusFilter: '',
+                creatorFeaturedFilter: '',
+                
+                // Modals
+                showCreateCreator: false,
+                
+                // API Base URL - adjust for your deployment
+                apiBase: window.location.origin.includes('localhost') ? 'http://localhost:3001' : '',
+                
+                async init() {
+                    if (this.token) {
+                        await this.verifyToken();
+                    }
+                    
+                    if (this.isAuthenticated) {
+                        await this.loadDashboardData();
+                    }
+                },
+                
+                async apiCall(endpoint, options = {}) {
+                    const url = `${this.apiBase}/api${endpoint}`;
+                    const config = {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(this.token && { 'Authorization': `Bearer ${this.token}` })
+                        },
+                        ...options
+                    };
+                    
+                    if (config.body && typeof config.body === 'object') {
+                        config.body = JSON.stringify(config.body);
+                    }
+                    
+                    return fetch(url, config);
+                },
+                
+                async verifyToken() {
+                    try {
+                        const response = await this.apiCall('/auth/verify');
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.user = data.user;
+                            this.isAuthenticated = true;
+                        } else {
+                            localStorage.removeItem('admin_token');
+                            this.token = null;
+                        }
+                    } catch (error) {
+                        console.error('Token verification failed:', error);
+                        localStorage.removeItem('admin_token');
+                        this.token = null;
+                    }
+                },
+                
+                async login() {
+                    this.loading = true;
+                    this.error = '';
+                    
+                    try {
+                        const response = await this.apiCall('/auth/login', {
+                            method: 'POST',
+                            body: this.loginForm
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            this.token = data.token;
+                            this.user = data.user;
+                            this.isAuthenticated = true;
+                            localStorage.setItem('admin_token', this.token);
+                            await this.loadDashboardData();
+                        } else {
+                            this.error = data.error || 'Login failed';
+                        }
+                    } catch (error) {
+                        this.error = 'Network error. Please try again.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                logout() {
+                    this.isAuthenticated = false;
+                    this.user = null;
+                    this.token = null;
+                    localStorage.removeItem('admin_token');
+                    this.loginForm = { username: '', password: '' };
+                },
+                
+                async loadDashboardData() {
+                    await Promise.all([
+                        this.loadStats(),
+                        this.loadCreators(),
+                        this.loadSettings()
+                    ]);
+                },
+                
+                async loadStats() {
+                    try {
+                        const response = await this.apiCall('/analytics/dashboard');
+                        
+                        if (response.ok) {
+                            this.stats = await response.json();
+                        }
+                    } catch (error) {
+                        console.error('Failed to load stats:', error);
+                    }
+                },
+                
+                async loadCreators() {
+                    try {
+                        const response = await this.apiCall('/creators');
+                        
+                        if (response.ok) {
+                            this.creators = await response.json();
+                            this.featuredCreators = this.creators.filter(c => c.is_featured)
+                                .sort((a, b) => b.featured_priority - a.featured_priority);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load creators:', error);
+                    }
+                },
+                
+                async loadSettings() {
+                    try {
+                        const response = await this.apiCall('/settings');
+                        
+                        if (response.ok) {
+                            this.settings = await response.json();
+                        }
+                    } catch (error) {
+                        console.error('Failed to load settings:', error);
+                    }
+                },
+                
+                async searchCreators() {
+                    const params = new URLSearchParams();
+                    if (this.creatorSearch) params.append('search', this.creatorSearch);
+                    if (this.creatorStatusFilter) params.append('status', this.creatorStatusFilter);
+                    if (this.creatorFeaturedFilter) params.append('featured', this.creatorFeaturedFilter);
+                    
+                    try {
+                        const response = await this.apiCall(`/creators?${params}`);
+                        
+                        if (response.ok) {
+                            this.creators = await response.json();
+                        }
+                    } catch (error) {
+                        console.error('Failed to search creators:', error);
+                    }
+                },
+                
+                async refreshCreators() {
+                    this.creatorSearch = '';
+                    this.creatorStatusFilter = '';
+                    this.creatorFeaturedFilter = '';
+                    await this.loadCreators();
+                },
+                
+                async toggleFeatured(creator) {
+                    try {
+                        const response = await this.apiCall(`/creators/${creator.id}`, {
+                            method: 'PUT',
+                            body: {
+                                is_featured: !creator.is_featured,
+                                featured_priority: !creator.is_featured ? Date.now() : 0
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            await this.loadCreators();
+                            await this.loadStats();
+                        }
+                    } catch (error) {
+                        console.error('Failed to toggle featured status:', error);
+                    }
+                },
+                
+                async createCreator() {
+                    try {
+                        const formData = new FormData();
+                        Object.keys(this.newCreator).forEach(key => {
+                            formData.append(key, this.newCreator[key]);
+                        });
+                        
+                        if (this.avatarFile) {
+                            formData.append('avatar', this.avatarFile);
+                        }
+                        
+                        const response = await fetch(`${this.apiBase}/api/creators`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${this.token}`
+                            },
+                            body: formData
+                        });
+                        
+                        if (response.ok) {
+                            this.showCreateCreator = false;
+                            this.newCreator = {
+                                display_name: '',
+                                description: '',
+                                is_featured: false,
+                                is_paid_member: false
+                            };
+                            this.avatarFile = null;
+                            await this.loadCreators();
+                            await this.loadStats();
+                        }
+                    } catch (error) {
+                        console.error('Failed to create creator:', error);
+                    }
+                },
+                
+                handleAvatarUpload(event) {
+                    this.avatarFile = event.target.files[0];
+                },
+                
+                async saveSettings() {
+                    try {
+                        const response = await this.apiCall('/settings', {
+                            method: 'PUT',
+                            body: this.settings
+                        });
+                        
+                        if (response.ok) {
+                            alert('Settings saved successfully!');
+                        }
+                    } catch (error) {
+                        console.error('Failed to save settings:', error);
+                        alert('Failed to save settings');
+                    }
+                },
+                
+                async refreshLiveStatus() {
+                    // This would trigger the live status polling
+                    alert('Live status refresh initiated. This will update automatically.');
+                },
+                
+                async exportData() {
+                    try {
+                        const response = await this.apiCall('/export/creators');
+                        
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'psycheverse-creators.json';
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        }
+                    } catch (error) {
+                        console.error('Failed to export data:', error);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
